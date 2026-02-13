@@ -1,9 +1,9 @@
 ### VARIABLES TO CHANGE - START
-PROJECT_ID=
-PROJECT_NUMBER=
-SERVICE_NAME=
-GITHUB_ORG=
-GITHUB_REPO=
+PROJECT_ID=amier-davis-hu
+PROJECT_NUMBER=357619712736
+SERVICE_NAME=galea-digital-app
+GITHUB_ORG=CodePath-Tech-Exchange-CTEx
+GITHUB_REPO=ise-genai-galea-digital
 ### VARIABLES TO CHANGE - END
 
 # ----------- Set Up GCP Project ----------- #

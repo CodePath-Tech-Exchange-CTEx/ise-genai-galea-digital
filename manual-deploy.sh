@@ -1,6 +1,6 @@
 ### VARIABLES TO CHANGE - START
-PROJECT_ID=
-SERVICE_NAME=
+PROJECT_ID=amier-davis-hu
+SERVICE_NAME=galea-digital-app
 ### VARIABLES TO CHANGE - END
 
 # ----------- Manual Deployment ------------ #
