@@ -90,6 +90,73 @@ class TestDisplayRecentWorkouts(unittest.TestCase):
         """Tests foo."""
         pass
 
+    def test_empty_workouts_shows_info_message(self):
+        """If workouts_list is empty, show info message and no expanders."""
+        def app():
+            from modules import display_recent_workouts
+            display_recent_workouts([])
+
+        at = AppTest.from_function(app).run()
+
+        self.assertEqual(at.subheader[0].value, "Recent Workouts")
+        self.assertGreaterEqual(len(at.info), 1)
+        self.assertEqual(at.info[0].value, "No recent workouts yet.")
+        self.assertEqual(len(at.expander), 0)
+
+    def test_none_workouts_shows_info_message(self):
+        """If workouts_list is None, treat it like empty and show info message."""
+        def app():
+            from modules import display_recent_workouts
+            display_recent_workouts(None)
+
+        at = AppTest.from_function(app).run()
+
+        self.assertEqual(at.subheader[0].value, "Recent Workouts")
+        self.assertGreaterEqual(len(at.info), 1)
+        self.assertEqual(at.info[0].value, "No recent workouts yet.")
+        self.assertEqual(len(at.expander), 0)
+    def test_workouts_render_expanders_and_metrics(self):
+        """Given workouts, render one expander per workout and metric labels."""
+        def app():
+            from modules import display_recent_workouts
+
+            workouts = [
+                {
+                    "workout_id": "w1",
+                    "start_timestamp": "2026-02-19 10:00",
+                    "end_timestamp": "2026-02-19 10:30",
+                    "distance": 3.2,
+                    "steps": 4200,
+                    "calories_burned": 250,
+                    "start_lat_lng": [38.9072, -77.0369],
+                    "end_lat_lng": [38.9090, -77.0400],
+                },
+                {
+                    "workout_id": "w2",
+                    "start_timestamp": "2026-02-20 08:00",
+                    "end_timestamp": "2026-02-20 08:45",
+                    "distance": 5.0,
+                    "steps": 6500,
+                    "calories_burned": 400,
+                    "start_lat_lng": [38.9000, -77.0300],
+                    "end_lat_lng": [38.9050, -77.0350],
+                },
+            ]
+
+            display_recent_workouts(workouts)
+
+        at = AppTest.from_function(app).run()
+
+        self.assertEqual(at.subheader[0].value, "Recent Workouts")
+        self.assertEqual(len(at.expander), 2)
+
+        metric_labels = [m.label for m in at.metric]
+        self.assertIn("Distance", metric_labels)
+        self.assertIn("Steps", metric_labels)
+        self.assertIn("Calories", metric_labels)
+
+        self.assertEqual(len(at.metric), 6)
+
 
 if __name__ == "__main__":
     unittest.main()
