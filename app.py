@@ -21,6 +21,8 @@ def display_app_page():
     value = st.text_input('Enter your name')
     display_my_custom_component(value)
     display_activity_summary(workouts)
+    display_recent_workouts(workouts)
+
 
 
 # This is the starting point for your app. You do not need to change these lines
