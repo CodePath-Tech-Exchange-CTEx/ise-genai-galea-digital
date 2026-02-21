@@ -143,7 +143,29 @@ def display_recent_workouts(workouts_list):
                 st.write(f"**End:** {end_coords[0]:.5f}, {end_coords[1]:.5f}")
 
 
-
 def display_genai_advice(timestamp, content, image):
-    """Write a good docstring here."""
-    pass
+    """
+    Renders a formatted AI advice card.
+
+    Args:
+        timestamp (str): A date string in the format "YYYY-MM-DD HH:MM:SS".
+        content (str): The primary advice or insight text to be displayed. 
+            If empty, the function returns early without rendering.
+        image (str): A URL to display alongside the advice. Can be None.
+    """
+    st.header("GenAI Coach Insight")
+
+    if not content:
+        st.info("No insights to display right now. Check in again later.")
+        return
+
+    date = (
+        datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
+        .strftime("%b %d, %Y")
+        )
+
+    st.caption(date)
+    st.info(content, icon='🤖')
+
+    if image:
+        st.image(image)

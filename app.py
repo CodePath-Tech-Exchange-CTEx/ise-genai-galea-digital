@@ -10,7 +10,9 @@ from modules import display_my_custom_component, display_post, display_genai_adv
 from data_fetcher import get_user_posts, get_genai_advice, get_user_profile, get_user_sensor_data, get_user_workouts
 
 userId = 'user1'
+
 workouts = get_user_workouts(userId)
+genai_advice = get_genai_advice(userId)
 
 
 def display_app_page():
@@ -22,6 +24,11 @@ def display_app_page():
     display_my_custom_component(value)
     display_activity_summary(workouts)
     display_recent_workouts(workouts)
+    display_genai_advice(
+        genai_advice['timestamp'],
+        genai_advice['content'],
+        genai_advice['image']
+    )
 
 
 
