@@ -135,9 +135,43 @@ class TestDisplayActivitySummary(unittest.TestCase):
 class TestDisplayGenAiAdvice(unittest.TestCase):
     """Tests the display_genai_advice function."""
 
-    def test_foo(self):
-        """Tests foo."""
-        pass
+    def test_display_advice_renders_successfully(self):
+        """Verifies that advice, formatted date, and image logic execute correctly."""
+        def app():
+            from modules import display_genai_advice
+            display_genai_advice(
+                timestamp="2026-02-19 10:00:00",
+                content="Great job on your run!",
+                image="https://via.placeholder.com/150"
+            )
+
+        at = AppTest.from_function(app).run()
+
+        # 1. Check Header (Exact match like your teammates)
+        self.assertEqual(at.header[0].value, "GenAI Coach Insight")
+
+        # 2. Check Date Formatting (Logic check: converts 2026-02-19 to Feb 19, 2026)
+        self.assertEqual(at.caption[0].value, "Feb 19, 2026")
+
+        # 3. Check Advice Content (Search within the st.info box)
+        self.assertIn("Great job", at.info[0].value)
+
+        # 4. Image Safety Check
+        self.assertFalse(at.exception)
+
+    def test_display_advice_empty_content(self):
+        """Edge Case: Verifies fallback message when no content is provided."""
+        def app():
+            from modules import display_genai_advice
+            display_genai_advice("2026-02-19 10:00:00", "", None)
+
+        at = AppTest.from_function(app).run()
+
+        # Check the 'no insights' fallback message
+        self.assertEqual(at.info[0].value, "No insights to display right now. Check in again later.")
+        
+        # Verify the 'early return' works (no caption/date should render)
+        self.assertEqual(len(at.caption), 0)
 
 
 class TestDisplayRecentWorkouts(unittest.TestCase):
