@@ -33,8 +33,35 @@ def display_my_custom_component(value):
 
 
 def display_post(username, user_image, timestamp, content, post_image):
-    """Write a good docstring here."""
-    pass
+    """
+    Displays a post with a large content font and a profile header where 
+    the username and image are visually balanced.
+    """
+    with st.container(border=True):
+        # 1. Header: Username and PFP balanced in size
+        # Use a small column ratio to keep them tight together
+        col1, col2 = st.columns([1, 10]) 
+        with col1:
+            if user_image:
+                # Set width to 40-50 to keep it from overpowering the text
+                st.image(user_image, width=50) 
+        with col2:
+            # Using st.markdown for the username to keep it smaller/balanced
+            st.markdown(f"#### {username}")
+
+        # 2. Post Content: Made bigger than the username
+        # Use HTML H2 or a large font-size via markdown
+        st.markdown(f"### {content}") 
+
+        # 3. Post Image
+        if post_image:
+            st.image(post_image, use_container_width=True)
+
+        # 4. Timestamp
+        st.markdown(
+            f"<div style='text-align: right; color: gray; font-size: 1em;'>{timestamp}</div>", 
+            unsafe_allow_html=True
+        )
 
 
 def display_activity_summary(workouts_list):

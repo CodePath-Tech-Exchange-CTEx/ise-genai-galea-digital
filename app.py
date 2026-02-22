@@ -22,6 +22,13 @@ def display_app_page():
     # An example of displaying a custom component called "my_custom_component"
     value = st.text_input('Enter your name')
     display_my_custom_component(value)
+    display_post(
+        username="WorkoutWarrior",
+        user_image="https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png?20170328184010", 
+        timestamp="2024-01-01 00:00:00",
+        content="Crushed my morning run! Feeling great.",
+        post_image="https://firstbenefits.org/wp-content/uploads/2017/10/placeholder.png"
+    )
     display_activity_summary(workouts)
     display_recent_workouts(workouts)
     display_genai_advice(
