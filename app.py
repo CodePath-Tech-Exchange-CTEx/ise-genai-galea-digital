@@ -6,7 +6,7 @@
 #############################################################################
 
 import streamlit as st
-from modules import display_my_custom_component, display_post, display_genai_advice, display_activity_summary, display_recent_workouts
+from modules import display_post, display_genai_advice, display_activity_summary, display_recent_workouts
 from data_fetcher import get_user_posts, get_genai_advice, get_user_profile, get_user_sensor_data, get_user_workouts
 
 userId = 'user1'
@@ -19,9 +19,6 @@ def display_app_page():
     """Displays the home page of the app."""
     st.title('Welcome to SDS!')
 
-    # An example of displaying a custom component called "my_custom_component"
-    value = st.text_input('Enter your name')
-    display_my_custom_component(value)
     display_post(
         username="WorkoutWarrior",
         user_image="https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png?20170328184010", 
