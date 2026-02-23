@@ -1,8 +1,10 @@
-# TODO: Replace with your team name
+# GALEA Digital
 
 ## Our Team
 
-TODO: Replace with your team members
+Gael Santos
+Amier Davis
+Lena Diouf
 
 # Setup
 
