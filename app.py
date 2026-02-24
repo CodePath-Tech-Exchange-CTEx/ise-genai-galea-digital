@@ -14,10 +14,9 @@ userId = 'user1'
 workouts = get_user_workouts(userId)
 genai_advice = get_genai_advice(userId)
 
-
 def display_app_page():
     """Displays the home page of the app."""
-    st.title('Welcome to SDS!')
+    st.title('GALEA Digital\'s Workout App')
 
     display_post(
         username="WorkoutWarrior",
