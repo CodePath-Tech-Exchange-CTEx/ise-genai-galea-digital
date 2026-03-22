@@ -9,6 +9,7 @@
 #############################################################################
 
 import random
+from google.cloud import bigquery
 
 users = {
     'user1': {
@@ -96,14 +97,43 @@ def get_user_workouts(user_id):
     return workouts
 
 
-def get_user_profile(user_id):
-    """Returns information about the given user.
+from google.cloud import bigquery
 
-    This function currently returns random data. You will re-write it in Unit 3.
+def get_user_profile(user_id):
+    """Returns information about the given user from BigQuery."""
+    client = bigquery.Client()
+    
+    query = """
+        SELECT 
+            Name as full_name, 
+            Username as username, 
+            CAST(DateOfBirth AS STRING) as date_of_birth, 
+            ImageUrl as profile_image,
+            ARRAY(
+                SELECT UserId2 FROM `amier-davis-hu.ISE.Friends` WHERE UserId1 = @user_id
+                UNION DISTINCT
+                SELECT UserId1 FROM `amier-davis-hu.ISE.Friends` WHERE UserId2 = @user_id
+            ) as friends
+        FROM `amier-davis-hu.ISE.Users`
+        WHERE UserId = @user_id
     """
-    if user_id not in users:
+    
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("user_id", "STRING", user_id)
+        ]
+    )
+
+    query_job = client.query(query, job_config=job_config)
+    results = list(query_job.result())
+
+    if not results:
         raise ValueError(f'User {user_id} not found.')
-    return users[user_id]
+
+    # results[0] is a Row object; dict() converts it to the required dictionary format
+    user_profile = dict(results[0])
+    
+    return user_profile
 
 
 def get_user_posts(user_id):
