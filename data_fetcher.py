@@ -9,6 +9,7 @@
 #############################################################################
 
 import random
+from google.cloud import bigquery
 
 users = {
     'user1': {
@@ -41,30 +42,74 @@ users = {
     },
 }
 
-
-def get_user_sensor_data(user_id, workout_id):
-    """Returns a list of timestampped information for a given workout.
-
-    This function currently returns random data. You will re-write it in Unit 3.
+def get_user_sensor_data(user_id, workout_id, client=None):
     """
+    Fetches timestamped sensor information for a specific workout from BigQuery.
+
+    Args:
+        user_id (str): The unique identifier for the user.
+        workout_id (str): The unique identifier for the workout session.
+        client (google.cloud.bigquery.Client, optional): An instantiated BigQuery client. 
+            If None, a new client will be initialized. Defaults to None.
+
+
+    Returns:
+        list[dict]: A list of records representing sensor readings. Each dictionary contains:
+            - 'sensor_type' (str): The human-readable name of the sensor (e.g., "Heart Rate").
+            - 'timestamp' (str): The string representation of when the data was recorded.
+            - 'data' (float): The numeric value of the sensor reading.
+            - 'units' (str): The unit of measurement for the reading (e.g., "bpm", "Celsius").
+
+    Raises:
+        ValueError: If either user_id or workout_id is None.
+    """
+    if client is None:
+        client = bigquery.Client()
+    
+    if user_id is None or workout_id is None:
+        raise ValueError("user_id and workout_id cannot be None")
+    
+    query = """
+        SELECT 
+            st.Name AS sensor_type, 
+            sd.Timestamp AS timestamp, 
+            sd.SensorValue AS data,
+            st.Units AS units
+        FROM 
+            `amier-davis-hu.ISE.SensorData` AS sd
+        JOIN 
+            `amier-davis-hu.ISE.Workouts` AS w 
+            ON sd.WorkoutID = w.WorkoutId
+        JOIN 
+            `amier-davis-hu.ISE.SensorTypes` AS st 
+            ON sd.SensorId = st.SensorId
+        WHERE 
+            w.UserId = @user_id 
+            AND w.WorkoutId = @workout_id
+        ORDER BY 
+            sd.Timestamp ASC
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("user_id", "STRING", user_id),
+            bigquery.ScalarQueryParameter("workout_id", "STRING", workout_id),
+        ]
+    )
+    
+    query_job = client.query(query, job_config=job_config)
+    results = query_job.result()
+
     sensor_data = []
-    sensor_types = [
-        'accelerometer',
-        'gyroscope',
-        'pressure',
-        'temperature',
-        'heart_rate',
-    ]
-    for index in range(random.randint(5, 100)):
-        random_minute = str(random.randint(0, 59))
-        if len(random_minute) == 1:
-            random_minute = '0' + random_minute
-        timestamp = '2024-01-01 00:' + random_minute + ':00'
-        data = random.random() * 100
-        sensor_type = random.choice(sensor_types)
-        sensor_data.append(
-            {'sensor_type': sensor_type, 'timestamp': timestamp, 'data': data}
-        )
+    
+    for row in results:
+        sensor_data.append({
+            'sensor_type': row.sensor_type,
+            'timestamp': str(row.timestamp),
+            'data': row.data,
+            'units': row.units
+        })
+        
     return sensor_data
 
 
