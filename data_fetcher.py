@@ -9,6 +9,7 @@
 #############################################################################
 
 import random
+from google.cloud import bigquery
 
 users = {
     'user1': {
@@ -106,22 +107,66 @@ def get_user_profile(user_id):
     return users[user_id]
 
 
-def get_user_posts(user_id):
-    """Returns a list of a user's posts.
 
-    This function currently returns random data. You will re-write it in Unit 3.
+
+def get_user_posts(user_id, client=None):
     """
-    content = random.choice([
-        'Had a great workout today!',
-        'The AI really motivated me to push myself further, I ran 10 miles!',
-    ])
-    return [{
-        'user_id': user_id,
-        'post_id': 'post1',
-        'timestamp': '2024-01-01 00:00:00',
-        'content': content,
-        'image': 'image_url',
-    }]
+    Returns a list of a user's posts from BigQuery.
+
+    Args:
+        user_id (str): The unique identifier for the user.
+        client (google.cloud.bigquery.Client, optional): An instantiated BigQuery client. 
+            If None, a new client will be initialized. Defaults to None.
+
+    Returns:
+        list[dict]: A list of posts. Each dictionary contains:
+            - 'user_id' (str): The ID of the author.
+            - 'post_id' (str): The unique ID of the post.
+            - 'timestamp' (str): When the post was created.
+            - 'content' (str): The text content (may be None).
+            - 'image' (str): The image URL associated with the post.
+
+    Raises:
+        ValueError: If user_id is None.
+    """
+    if user_id is None:
+        raise ValueError("user_id cannot be None")
+
+    if client is None:
+        client = bigquery.Client()
+    
+    query = """
+        SELECT 
+            AuthorId AS user_id, 
+            PostId AS post_id, 
+            CAST(Timestamp AS STRING) AS timestamp, 
+            Content AS content, 
+            ImageUrl AS image
+        FROM `amier-davis-hu.ISE.Posts`
+        WHERE AuthorId = @user_id
+        ORDER BY Timestamp DESC
+    """
+    
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("user_id", "STRING", user_id)
+        ]
+    )
+
+    query_job = client.query(query, job_config=job_config)
+    results = query_job.result()
+
+    posts = []
+    for row in results:
+        posts.append({
+            'user_id': row.user_id,
+            'post_id': row.post_id,
+            'timestamp': row.timestamp,
+            'content': row.content,
+            'image': row.image
+        })
+    
+    return posts
 
 
 def get_genai_advice(user_id):
