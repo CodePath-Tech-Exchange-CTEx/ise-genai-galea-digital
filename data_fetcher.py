@@ -9,6 +9,7 @@
 #############################################################################
 
 import random
+from google.cloud import bigquery
 
 users = {
     'user1': {
@@ -106,11 +107,12 @@ def get_user_profile(user_id):
     return users[user_id]
 
 
-from google.cloud import bigquery
 
-def get_user_posts(user_id):
+
+def get_user_posts(user_id, client=None):
     """Returns a list of a user's posts from BigQuery."""
-    client = bigquery.Client()
+    if client is None:
+        client = bigquery.Client()
     
     # We rename columns in the SQL so they match your required output keys
     query = """
