@@ -7,10 +7,11 @@ EXPOSE 8080
 # Set the working directory to /app
 WORKDIR /app
 
-# Install any needed packages specified in requirements.txt
+# 1. Copy ONLY requirements first to use Docker caching
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the directory contents into the container
+# 2. Copy the rest of the code (this happens fast)
 COPY . .
 
 # The main command to run when the container starts.
