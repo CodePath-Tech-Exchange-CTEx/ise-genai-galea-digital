@@ -6,50 +6,95 @@
 # You will write these tests in Unit 3.
 #############################################################################
 import unittest
+from unittest.mock import MagicMock
+from google.cloud import exceptions
 from data_fetcher import get_user_profile, get_user_posts, get_user_sensor_data, get_user_workouts, get_genai_advice
 
 class TestGetUserProfile(unittest.TestCase):
+    """Test suite for the get_user_profile function."""
+    def setUp(self):
+        self.user_id = "user2"
+        self.mock_client = MagicMock()
+
+    # FUNCTIONAL REQUIREMENTS
+
     def test_get_user_profile_success(self):
-        """Tests that a valid user profile is returned correctly."""
-        # Using 'user2' (Bob Smith)
-        user_id = 'user2'
-        profile = get_user_profile(user_id)
+        """Test that profile data and friends list are correctly mapped."""
+        # Setup the mock row
+        mock_row = MagicMock()
+        mock_row.full_name = 'Bob Smith'
+        mock_row.username = 'bobsmith'
+        mock_row.date_of_birth = '1985-06-20'
+        mock_row.profile_image = 'http://example.com/bob.jpg'
+        # BigQuery arrays come back as list-like objects
+        mock_row.friends = ['user1', 'user3']
 
-        # Check basic info
-        self.assertEqual(profile['full_name'], 'Bob Smith')
-        self.assertEqual(profile['username'], 'bobsmith')
-        self.assertEqual(profile['date_of_birth'], '1985-06-20')
-        
-        # Check friends
-        self.assertIn('user1', profile['friends'])
-        self.assertIn('user3', profile['friends'])
-        self.assertEqual(len(profile['friends']), 2)
+        # Configure the mock client
+        self.mock_client.query.return_value.result.return_value = [mock_row]
 
-    def test_get_user_profile_friends_bidirectional(self):
-        """Verify friends are found regardless of which column the UserID is in."""
-        # user2 should have user1 and user3 in their list
-        profile = get_user_profile('user2')
-        
-        self.assertIn('user1', profile['friends'], "Should find user1 from UserId2 column")
-        self.assertIn('user3', profile['friends'], "Should find user3 from UserId1 column")
-        self.assertEqual(len(profile['friends']), 2)
+        # Inject the mock_client
+        result = get_user_profile(self.user_id, client=self.mock_client)
 
-    def test_get_user_profile_schema_format(self):
-        """Verify all dictionary keys exist and data types are correct for the UI."""
-        profile = get_user_profile('user1')
+        # Assertions
+        self.assertEqual(result['full_name'], 'Bob Smith')
+        self.assertEqual(result['username'], 'bobsmith')
+        self.assertIsInstance(result['friends'], list)
+        self.assertEqual(len(result['friends']), 2)
+        self.assertIn('user1', result['friends'])
+
+    def test_query_parameters_passed(self):
+        """Verify the query uses @user_id to prevent SQL injection."""
+        # We need a return value so the function doesn't crash before the check
+        self.mock_client.query.return_value.result.return_value = [MagicMock()]
         
-        # Check that date_of_birth is a string (e.g., '1990-01-15') and not a Python Date object
-        self.assertIsInstance(profile['date_of_birth'], str)
+        get_user_profile(self.user_id, client=self.mock_client)
         
-        # Check that friends is a list of strings, not a list of BigQuery Row objects
-        self.assertIsInstance(profile['friends'], list)
-        if len(profile['friends']) > 0:
-            self.assertIsInstance(profile['friends'][0], str)
+        args, _ = self.mock_client.query.call_args
+        query_str = args[0]
+        self.assertIn('@user_id', query_str)
+
+    # INPUT EDGE CASES
+
+    def test_invalid_input_none(self):
+        """Test how the function handles a None user_id."""
+        with self.assertRaises(ValueError):
+            get_user_profile(None, client=self.mock_client)
+
+    # DATA EDGE CASES
 
     def test_get_user_profile_not_found(self):
-        """Tests that a ValueError is raised for a non-existent user."""
+        """Ensure ValueError is raised if BigQuery returns no rows."""
+        self.mock_client.query.return_value.result.return_value = [] 
+
         with self.assertRaises(ValueError):
-            get_user_profile('non_existent_user_999')
+            get_user_profile("non_existent_user", client=self.mock_client)
+
+    def test_schema_types(self):
+        """Verify data types match the UI requirements (dates as strings)."""
+        mock_row = MagicMock()
+        mock_row.date_of_birth = '1990-01-15' # Already cast to string in SQL
+        mock_row.friends = []
+        
+        self.mock_client.query.return_value.result.return_value = [mock_row]
+        
+        result = get_user_profile(self.user_id, client=self.mock_client)
+        self.assertIsInstance(result['date_of_birth'], str)
+
+    # INFRASTRUCTURE & INTEGRATION ERRORS
+
+    def test_bigquery_authentication_error(self):
+        """Simulate a 403 Forbidden error."""
+        self.mock_client.query.side_effect = exceptions.Forbidden("Access Denied")
+        
+        with self.assertRaises(exceptions.Forbidden):
+            get_user_profile(self.user_id, client=self.mock_client)
+
+    def test_bigquery_timeout(self):
+        """Simulate a network timeout."""
+        self.mock_client.query.side_effect = exceptions.InternalServerError("Timeout")
+        
+        with self.assertRaises(exceptions.InternalServerError):
+            get_user_profile(self.user_id, client=self.mock_client)
 
 if __name__ == "__main__":
     unittest.main()

@@ -97,23 +97,43 @@ def get_user_workouts(user_id):
     return workouts
 
 
-from google.cloud import bigquery
+def get_user_profile(user_id, client=None):
+    """
+    Returns information about the given user from BigQuery.
 
-def get_user_profile(user_id):
-    """Returns information about the given user from BigQuery."""
-    client = bigquery.Client()
+    Args:
+        user_id (str): The unique identifier for the user.
+        client (google.cloud.bigquery.Client, optional): An instantiated BigQuery client. 
+            If None, a new client will be initialized. Defaults to None.
+
+    Returns:
+        dict: A dictionary containing:
+            - 'full_name' (str): The user's full name.
+            - 'username' (str): The user's handle.
+            - 'date_of_birth' (str): The user's birth date.
+            - 'profile_image' (str): URL to the user's image.
+            - 'friends' (list[str]): A list of friend user_ids.
+
+    Raises:
+        ValueError: If user_id is None or if the user is not found.
+    """
+    if user_id is None:
+        raise ValueError("user_id cannot be None")
+
+    if client is None:
+        client = bigquery.Client()
     
     query = """
         SELECT 
-            Name as full_name, 
-            Username as username, 
-            CAST(DateOfBirth AS STRING) as date_of_birth, 
-            ImageUrl as profile_image,
+            Name AS full_name, 
+            Username AS username, 
+            CAST(DateOfBirth AS STRING) AS date_of_birth, 
+            ImageUrl AS profile_image,
             ARRAY(
                 SELECT UserId2 FROM `amier-davis-hu.ISE.Friends` WHERE UserId1 = @user_id
                 UNION DISTINCT
                 SELECT UserId1 FROM `amier-davis-hu.ISE.Friends` WHERE UserId2 = @user_id
-            ) as friends
+            ) AS friends
         FROM `amier-davis-hu.ISE.Users`
         WHERE UserId = @user_id
     """
@@ -128,12 +148,16 @@ def get_user_profile(user_id):
     results = list(query_job.result())
 
     if not results:
-        raise ValueError(f'User {user_id} not found.')
+        raise ValueError(f"User {user_id} not found.")
 
-    # results[0] is a Row object; dict() converts it to the required dictionary format
-    user_profile = dict(results[0])
-    
-    return user_profile
+    row = results[0]
+    return {
+        'full_name': row.full_name,
+        'username': row.username,
+        'date_of_birth': row.date_of_birth,
+        'profile_image': row.profile_image,
+        'friends': list(row.friends)
+    }
 
 
 def get_user_posts(user_id):
