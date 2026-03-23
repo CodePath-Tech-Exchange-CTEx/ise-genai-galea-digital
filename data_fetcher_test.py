@@ -28,20 +28,16 @@ class TestGetUserSensorData(unittest.TestCase):
 
     def test_get_user_sensor_data_success(self):
         """Test that data is correctly mapped from BigQuery rows to list of dicts."""
-        # Setup the mock row
         mock_row_1 = MagicMock()
         mock_row_1.sensor_type = 'heart_rate'
         mock_row_1.timestamp = '2024-01-01 10:00:00'
         mock_row_1.data = 75.5
         mock_row_1.units = 'bpm'
 
-        # Configure the mock client to return our row
         self.mock_client.query.return_value.result.return_value = [mock_row_1]
 
-        # Inject the mock_client directly
         result = get_user_sensor_data(self.user_id, self.workout_id, client=self.mock_client)
 
-        # Assertions
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['sensor_type'], 'heart_rate')
         self.assertIsInstance(result[0]['data'], float)
@@ -67,12 +63,28 @@ class TestGetUserSensorData(unittest.TestCase):
 
     # DATA EDGE CASES
 
-    def test_no_results_found(self):
-        """Ensure an empty list is returned if BigQuery finds nothing."""
-        self.mock_client.query.return_value.result.return_value = [] 
+    def test_no_results_found_user_missing(self):
+        """When no results and user doesn't exist, raise ValueError for missing user."""
+        self.mock_client.query.return_value.result.return_value = []
 
-        result = get_user_sensor_data("fake_user", "fake_workout", client=self.mock_client)
-        self.assertEqual(result, [])
+        with self.assertRaises(ValueError) as ctx:
+            get_user_sensor_data("fake_user", "fake_workout", client=self.mock_client)
+
+        self.assertIn("fake_user", str(ctx.exception))
+    
+    def test_no_results_found_workout_missing(self):
+        """When no results but user exists, raise ValueError for missing workout."""
+        self.mock_client.query.return_value.result.side_effect = [
+            [],
+            [self.mock_client]
+        ]
+
+        with self.assertRaises(ValueError) as ctx:
+            get_user_sensor_data(self.user_id, self.workout_id, client=self.mock_client)
+
+        self.assertIn(self.workout_id, str(ctx.exception))
+        self.assertIn(self.user_id, str(ctx.exception))
+        
 
     def test_missing_column_in_schema(self):
         """Test resilience if a row is missing an expected attribute."""

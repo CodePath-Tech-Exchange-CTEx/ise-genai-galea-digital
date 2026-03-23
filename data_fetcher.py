@@ -61,7 +61,7 @@ def get_user_sensor_data(user_id, workout_id, client=None):
             - 'units' (str): The unit of measurement for the reading (e.g., "bpm", "Celsius").
 
     Raises:
-        ValueError: If either user_id or workout_id is None.
+        ValueError: If either user_id or workout_id is None, or if either is not found in the DB.
     """
     if client is None:
         client = bigquery.Client()
@@ -99,6 +99,18 @@ def get_user_sensor_data(user_id, workout_id, client=None):
     
     query_job = client.query(query, job_config=job_config)
     results = query_job.result()
+
+    if not results:
+        user_check_query = "SELECT 1 FROM `amier-davis-hu.ISE.Workouts` WHERE UserId = @user_id LIMIT 1"
+        user_check_config = bigquery.QueryJobConfig(
+            query_parameters=[bigquery.ScalarQueryParameter("user_id", "STRING", user_id)]
+        )
+        user_exists = list(client.query(user_check_query, job_config=user_check_config).result())
+
+        if not user_exists:
+            raise ValueError(f"User {user_id} not found.")
+        else:
+            raise ValueError(f"Workout {workout_id} not found for user {user_id}.")
 
     sensor_data = []
     
