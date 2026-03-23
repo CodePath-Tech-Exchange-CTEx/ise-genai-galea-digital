@@ -73,28 +73,55 @@ def get_user_workouts(user_id):
 
     This function currently returns random data. You will re-write it in Unit 3.
     """
-    workouts = []
-    for index in range(random.randint(1, 3)):
-        random_lat_lng_1 = (
-            1 + random.randint(0, 100) / 100,
-            4 + random.randint(0, 100) / 100,
-        )
-        random_lat_lng_2 = (
-            1 + random.randint(0, 100) / 100,
-            4 + random.randint(0, 100) / 100,
-        )
-        workouts.append({
-            'workout_id': f'workout{index}',
-            'start_timestamp': '2024-01-01 00:00:00',
-            'end_timestamp': '2024-01-01 00:30:00',
-            'start_lat_lng': random_lat_lng_1,
-            'end_lat_lng': random_lat_lng_2,
-            'distance': random.randint(0, 200) / 10.0,
-            'steps': random.randint(0, 20000),
-            'calories_burned': random.randint(0, 100),
-        })
-    return workouts
+    query = """
+        SELECT
+            WorkoutId,
+            StartTimestamp,
+            EndTimestamp,
+            StartLocationLat,
+            StartLocationLong,
+            EndLocationLat,
+            EndLocationLong,
+            TotalDistance,
+            TotalSteps,
+            CaloriesBurned
+        FROM amier-davis-hu.ISE.Workouts
+        WHERE UserId = @user_id
+        ORDER BY StartTimestamp DESC
+    """
 
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("user_id", "STRING", user_id)
+        ]
+    )
+
+    query_job = client.query(query, job_config=job_config)
+    results = query_job.result()
+
+    workouts = []
+    for row in results:
+        start_lat_lng = None
+        if row.StartLocationLat is not None and row.StartLocationLong is not None:
+            start_lat_lng = (row.StartLocationLat, row.StartLocationLong)
+
+        end_lat_lng = None
+        if row.EndLocationLat is not None and row.EndLocationLong is not None:
+            end_lat_lng = (row.EndLocationLat, row.EndLocationLong)
+
+        workouts.append({
+            "workout_id": row.WorkoutId,
+            "start_timestamp": row.StartTimestamp.strftime("%Y-%m-%d %H:%M:%S") if row.StartTimestamp else None,
+            "end_timestamp": row.EndTimestamp.strftime("%Y-%m-%d %H:%M:%S") if row.EndTimestamp else None,
+            "start_lat_lng": start_lat_lng,
+            "end_lat_lng": end_lat_lng,
+            "distance": row.TotalDistance,
+            "steps": row.TotalSteps,
+            "calories_burned": row.CaloriesBurned,
+        })
+
+    return workouts
+    
 
 def get_user_profile(user_id):
     """Returns information about the given user.
