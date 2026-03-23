@@ -9,6 +9,7 @@
 #############################################################################
 
 import random
+from google.cloud import bigquery
 
 users = {
     'user1': {
@@ -68,11 +69,31 @@ def get_user_sensor_data(user_id, workout_id):
     return sensor_data
 
 
-def get_user_workouts(user_id):
-    """Returns a list of user's workouts.
-
-    This function currently returns random data. You will re-write it in Unit 3.
+def get_user_workouts(user_id, client=None):
     """
+    Fetches a list of workouts for a given user from BigQuery.
+
+    Args:
+        user_id (str): The  identifier of the user whose workouts are being retrieved.
+
+    Returns:
+        list[dict]: A list of dictionaries, where each dictionary represents a workout.
+        Each workout contains:
+            - workout_id (str)
+            - start_timestamp (str | None)
+            - end_timestamp (str | None)
+            - start_lat_lng (tuple[float, float] | None)
+            - end_lat_lng (tuple[float, float] | None)
+            - distance (float)
+            - steps (int)
+            - calories_burned (float)
+    """
+    if user_id is None:
+        raise ValueError("user_id cannot be None")
+
+    if client is None:
+        client = bigquery.Client()
+
     query = """
         SELECT
             WorkoutId,
@@ -98,11 +119,13 @@ def get_user_workouts(user_id):
 
     query_job = client.query(query, job_config=job_config)
     results = query_job.result()
+    if not results:
+        raise ValueError(f"User {user_id} not found.")
 
     workouts = []
     for row in results:
         start_lat_lng = None
-        if row.StartLocationLat is not None and row.StartLocationLong is not None:
+        if row.StartLocationLat is not None or row.StartLocationLong is not None:
             start_lat_lng = (row.StartLocationLat, row.StartLocationLong)
 
         end_lat_lng = None

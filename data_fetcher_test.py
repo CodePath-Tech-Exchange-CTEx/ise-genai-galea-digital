@@ -13,16 +13,14 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from data_fetcher import get_user_workouts
 
-class TestDataFetcher(unittest.TestCase):
-
+class TestGetUserWorkouts(unittest.TestCase):
+    """Tests for get_user_workouts."""
     def test_foo(self):
         """Tests foo."""
         pass
 
-    @patch("data_fetcher.client")
-    def test_get_user_workouts_returns_formatted_workouts(self, mock_client):
+    def test_returns_formatted_workouts(self):
         """Tests that get_user_workouts returns correctly formatted workout data."""
-
         fake_rows = [
             SimpleNamespace(
                 WorkoutId="workout1",
@@ -38,11 +36,12 @@ class TestDataFetcher(unittest.TestCase):
             )
         ]
 
+        mock_client = MagicMock()
         mock_query_job = MagicMock()
         mock_query_job.result.return_value = fake_rows
         mock_client.query.return_value = mock_query_job
 
-        workouts = get_user_workouts("user1")
+        workouts = get_user_workouts("user1", client=mock_client)
 
         self.assertEqual(len(workouts), 1)
         self.assertEqual(workouts[0]["workout_id"], "workout1")
@@ -56,10 +55,8 @@ class TestDataFetcher(unittest.TestCase):
 
         mock_client.query.assert_called_once()
 
-    @patch("data_fetcher.client")
-    def test_get_user_workouts_handles_missing_optional_fields(self, mock_client):
+    def test_handles_missing_optional_fields(self):
         """Tests that get_user_workouts handles missing values correctly."""
-
         fake_rows = [
             SimpleNamespace(
                 WorkoutId="workout2",
@@ -75,11 +72,12 @@ class TestDataFetcher(unittest.TestCase):
             )
         ]
 
+        mock_client = MagicMock()
         mock_query_job = MagicMock()
         mock_query_job.result.return_value = fake_rows
         mock_client.query.return_value = mock_query_job
 
-        workouts = get_user_workouts("user2")
+        workouts = get_user_workouts("user2", client=mock_client)
 
         self.assertEqual(len(workouts), 1)
         self.assertEqual(workouts[0]["workout_id"], "workout2")
@@ -91,32 +89,39 @@ class TestDataFetcher(unittest.TestCase):
         self.assertIsNone(workouts[0]["steps"])
         self.assertIsNone(workouts[0]["calories_burned"])
 
-    @patch("data_fetcher.client")
-    def test_get_user_workouts_returns_empty_list_when_no_results(self, mock_client):
-        """Tests that get_user_workouts returns an empty list when no workouts are found."""
-
+    def test_raises_error_when_no_results(self):
+        """Tests that get_user_workouts raises ValueError when no workouts are found."""
+        mock_client = MagicMock()
         mock_query_job = MagicMock()
         mock_query_job.result.return_value = []
         mock_client.query.return_value = mock_query_job
 
-        workouts = get_user_workouts("unknown_user")
+        with self.assertRaises(ValueError):
+            get_user_workouts("unknown_user", client=mock_client)
 
-        self.assertEqual(workouts, [])
-
-    @patch("data_fetcher.client")
-    def test_get_user_workouts_builds_query_with_user_id(self, mock_client):
-        """Tests that get_user_workouts sends the query to BigQuery."""
-
+    def test_builds_query_with_user_id(self):
+        """Tests that get_user_workouts sends the expected query and job config."""
+        mock_client = MagicMock()
         mock_query_job = MagicMock()
         mock_query_job.result.return_value = []
         mock_client.query.return_value = mock_query_job
 
-        get_user_workouts("user123")
+        try:
+            get_user_workouts("user123", client=mock_client)
+        except ValueError:
+            pass  # expected due to empty results
 
         args, kwargs = mock_client.query.call_args
         self.assertIn("FROM amier-davis-hu.ISE.Workouts", args[0])
         self.assertIn("WHERE UserId = @user_id", args[0])
         self.assertIn("job_config", kwargs)
+
+    def test_raises_value_error_when_user_id_is_none(self):
+        """Tests that get_user_workouts raises ValueError when user_id is None."""
+        mock_client = MagicMock()
+
+        with self.assertRaises(ValueError):
+            get_user_workouts(None, client=mock_client)
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,11 +7,11 @@ EXPOSE 8080
 # Set the working directory to /app
 WORKDIR /app
 
-# Copy the directory contents into the container
-COPY . ./
-
 # Install any needed packages specified in requirements.txt
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the directory contents into the container
+COPY . .
 
 # The main command to run when the container starts.
-ENTRYPOINT ["streamlit", "run", "app.py"]
+ENTRYPOINT ["streamlit", "run", "app.py", "--server.port=8080", "--server.address=0.0.0.0"]
