@@ -110,11 +110,31 @@ def get_user_profile(user_id):
 
 
 def get_user_posts(user_id, client=None):
-    """Returns a list of a user's posts from BigQuery."""
+    """
+    Returns a list of a user's posts from BigQuery.
+
+    Args:
+        user_id (str): The unique identifier for the user.
+        client (google.cloud.bigquery.Client, optional): An instantiated BigQuery client. 
+            If None, a new client will be initialized. Defaults to None.
+
+    Returns:
+        list[dict]: A list of posts. Each dictionary contains:
+            - 'user_id' (str): The ID of the author.
+            - 'post_id' (str): The unique ID of the post.
+            - 'timestamp' (str): When the post was created.
+            - 'content' (str): The text content (may be None).
+            - 'image' (str): The image URL associated with the post.
+
+    Raises:
+        ValueError: If user_id is None.
+    """
+    if user_id is None:
+        raise ValueError("user_id cannot be None")
+
     if client is None:
         client = bigquery.Client()
     
-    # We rename columns in the SQL so they match your required output keys
     query = """
         SELECT 
             AuthorId AS user_id, 
@@ -136,9 +156,17 @@ def get_user_posts(user_id, client=None):
     query_job = client.query(query, job_config=job_config)
     results = query_job.result()
 
-    # Convert the resulting rows into a list of dictionaries
-    # If no posts are found, this will naturally return an empty list []
-    return [dict(row) for row in results]
+    posts = []
+    for row in results:
+        posts.append({
+            'user_id': row.user_id,
+            'post_id': row.post_id,
+            'timestamp': row.timestamp,
+            'content': row.content,
+            'image': row.image
+        })
+    
+    return posts
 
 
 def get_genai_advice(user_id):
