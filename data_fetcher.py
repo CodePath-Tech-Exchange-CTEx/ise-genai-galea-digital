@@ -8,8 +8,10 @@
 # testing earlier units.
 #############################################################################
 
-import random
 from google.cloud import bigquery
+from datetime import datetime
+import random
+
 
 users = {
     'user1': {
@@ -326,25 +328,76 @@ def get_user_posts(user_id, client=None):
     
     return posts
 
-
-def get_genai_advice(user_id):
+def get_genai_advice(user_id, model=None):
     """Returns the most recent advice from the genai model.
 
     This function currently returns random data. You will re-write it in Unit 3.
     """
-    advice = random.choice([
-        'Your heart rate indicates you can push yourself further. You got this!',
-        "You're doing great! Keep up the good work.",
-        'You worked hard yesterday, take it easy today.',
-        'You have burned 100 calories so far today!',
-    ])
-    image = random.choice([
-        'https://plus.unsplash.com/premium_photo-1669048780129-051d670fa2d1?q=80&w=3870&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-        None,
-    ])
+    content = None
+    username = get_username(user_id)
+
+    try:
+        if model is None:
+            import vertexai
+            from vertexai.generative_models import GenerativeModel
+
+            vertexai.init(project="lena-diouf-hu", location="us-central1")
+            model = GenerativeModel("gemini-2.5-flash")
+
+        prompt = f"""
+        You are a supportive fitness coach.
+        Give one short, motivating and practical fitness insight for user {username}.
+        Keep it under 50 words. Do not use markdown.
+        """
+
+        response = model.generate_content(prompt)
+        content = response.text.strip() if getattr(response, "text", None) else None
+
+    except Exception as e:
+        print(f"Vertex AI failed, using fallback: {e}")
+
+    if not content:
+        content = random.choice([
+            "Your heart rate indicates you can push yourself further. You got this!",
+            "You're doing great! Keep up the good work.",
+            "You worked hard yesterday, take it easy today.",
+            "You have burned 100 calories so far today!",
+        ])
+
+    image = None
+    if random.random() < 0.5:
+        image = "https://plus.unsplash.com/premium_photo-1669048780129-051d670fa2d1?q=80&w=3870&auto=format&fit=crop"
+
     return {
-        'advice_id': 'advice1',
-        'timestamp': '2024-01-01 00:00:00',
-        'content': advice,
-        'image': image,
+        "advice_id": f"advice_{user_id}_{int(datetime.now().timestamp())}",
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "content": content,
+        "image": image,
     }
+
+
+
+def get_username(user_id, client=None):
+    if client is None:
+        client = bigquery.Client(project="lena-diouf-hu")
+
+    query = f"""
+        SELECT Username
+        FROM amier-davis-hu.ISE.Users
+        WHERE UserId = @user_id
+        LIMIT 1
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("user_id", "STRING", user_id)
+        ]
+    )
+
+    results = client.query(query, job_config=job_config).result()
+
+    for row in results:
+        return row.Username
+
+    return "User"
+
