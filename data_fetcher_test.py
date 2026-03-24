@@ -28,7 +28,6 @@ class TestGetUserProfile(unittest.TestCase):
         mock_row.profile_image = 'http://example.com/bob.jpg'
         mock_row.friends = ['user1', 'user3']
 
-        # THE FIX: 
         # .query() returns a mock_job
         # .query().result() returns the list of rows
         self.mock_client.query.return_value.result.return_value = [mock_row]
