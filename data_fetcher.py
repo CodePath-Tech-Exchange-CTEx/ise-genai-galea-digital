@@ -11,10 +11,8 @@
 from google.cloud import bigquery
 from datetime import datetime
 import random
-
-
-
-client = bigquery.Client(project="lena-diouf-hu")
+import vertexai
+from vertexai.generative_models import GenerativeModel
 
 users = {
     'user1': {
@@ -157,7 +155,7 @@ def get_user_posts(user_id):
     }]
 
 
-def get_genai_advice(user_id):
+def get_genai_advice(user_id, model=None):
     """Returns the most recent advice from the genai model.
 
     This function currently returns random data. You will re-write it in Unit 3.
@@ -166,11 +164,9 @@ def get_genai_advice(user_id):
     username = get_username(user_id)
 
     try:
-        import vertexai
-        from vertexai.generative_models import GenerativeModel
-
-        vertexai.init(project="lena-diouf-hu", location="us-central1")
-        model = GenerativeModel("gemini-2.5-flash")
+        if model is None:
+            vertexai.init(project="lena-diouf-hu", location="us-central1")
+            model = GenerativeModel("gemini-2.5-flash")
 
         prompt = f"""
         You are a supportive fitness coach.
@@ -182,7 +178,7 @@ def get_genai_advice(user_id):
         content = response.text.strip() if getattr(response, "text", None) else None
 
     except Exception as e:
-        st.warning(f"Vertex AI failed, using fallback: {e}")
+        print(f"Vertex AI failed, using fallback: {e}")
 
     if not content:
         content = random.choice([
@@ -205,8 +201,9 @@ def get_genai_advice(user_id):
 
 
 
-def get_username(user_id):
-    client = bigquery.Client(project="lena-diouf-hu")
+def get_username(user_id, client=None):
+    if client is None:
+        client = bigquery.Client(project="lena-diouf-hu")
 
     query = f"""
         SELECT Username
