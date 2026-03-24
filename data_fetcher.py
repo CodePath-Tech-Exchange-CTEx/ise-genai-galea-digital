@@ -11,8 +11,6 @@
 from google.cloud import bigquery
 from datetime import datetime
 import random
-import vertexai
-from vertexai.generative_models import GenerativeModel
 
 
 users = {
@@ -340,6 +338,9 @@ def get_genai_advice(user_id, model=None):
 
     try:
         if model is None:
+            import vertexai
+            from vertexai.generative_models import GenerativeModel
+
             vertexai.init(project="lena-diouf-hu", location="us-central1")
             model = GenerativeModel("gemini-2.5-flash")
 
