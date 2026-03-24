@@ -26,9 +26,14 @@ class TestGetUserProfile(unittest.TestCase):
         mock_row.username = 'bobsmith'
         mock_row.date_of_birth = '1985-06-20'
         mock_row.profile_image = 'http://example.com/bob.jpg'
-        # BigQuery arrays come back as list-like objects
         mock_row.friends = ['user1', 'user3']
-        
+
+        # THE FIX: 
+        # .query() returns a mock_job
+        # .query().result() returns the list of rows
+        self.mock_client.query.return_value.result.return_value = [mock_row]
+
+        # Inject the mock_client
         result = get_user_profile(self.user_id, client=self.mock_client)
 
         # Assertions
