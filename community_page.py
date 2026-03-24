@@ -30,8 +30,9 @@ def display_community_page(user_id):
             p.Content as content,
             p.ImageUrl as post_image
         FROM `amier-davis-hu.ISE.Posts` p
-        JOIN `amier-davis-hu.ISE.Friends` f ON p.AuthorId = f.friend_id
-        WHERE f.user_id = '{user_id}'
+        JOIN `amier-davis-hu.ISE.Friends` f 
+            ON p.AuthorId = f.UserId2 AND f.UserId1 = '{user_id}'
+            OR p.AuthorId = f.UserId1 AND f.UserId2 = '{user_id}'
         ORDER BY p.Timestamp DESC
         LIMIT 10
     """
