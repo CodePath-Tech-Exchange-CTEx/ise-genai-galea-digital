@@ -8,7 +8,10 @@
 # testing earlier units.
 #############################################################################
 
+from google.cloud import bigquery
+from datetime import datetime
 import random
+
 
 users = {
     'user1': {
@@ -41,107 +44,360 @@ users = {
     },
 }
 
-
-def get_user_sensor_data(user_id, workout_id):
-    """Returns a list of timestampped information for a given workout.
-
-    This function currently returns random data. You will re-write it in Unit 3.
+def get_user_sensor_data(user_id, workout_id, client=None):
     """
-    sensor_data = []
-    sensor_types = [
-        'accelerometer',
-        'gyroscope',
-        'pressure',
-        'temperature',
-        'heart_rate',
-    ]
-    for index in range(random.randint(5, 100)):
-        random_minute = str(random.randint(0, 59))
-        if len(random_minute) == 1:
-            random_minute = '0' + random_minute
-        timestamp = '2024-01-01 00:' + random_minute + ':00'
-        data = random.random() * 100
-        sensor_type = random.choice(sensor_types)
-        sensor_data.append(
-            {'sensor_type': sensor_type, 'timestamp': timestamp, 'data': data}
+    Fetches timestamped sensor information for a specific workout from BigQuery.
+
+    Args:
+        user_id (str): The unique identifier for the user.
+        workout_id (str): The unique identifier for the workout session.
+        client (google.cloud.bigquery.Client, optional): An instantiated BigQuery client. 
+            If None, a new client will be initialized. Defaults to None.
+
+
+    Returns:
+        list[dict]: A list of records representing sensor readings. Each dictionary contains:
+            - 'sensor_type' (str): The human-readable name of the sensor (e.g., "Heart Rate").
+            - 'timestamp' (str): The string representation of when the data was recorded.
+            - 'data' (float): The numeric value of the sensor reading.
+            - 'units' (str): The unit of measurement for the reading (e.g., "bpm", "Celsius").
+
+    Raises:
+        ValueError: If either user_id or workout_id is None, or if either is not found in the DB.
+    """
+    if client is None:
+        client = bigquery.Client()
+    
+    if user_id is None or workout_id is None:
+        raise ValueError("user_id and workout_id cannot be None")
+    
+    query = """
+        SELECT 
+            st.Name AS sensor_type, 
+            sd.Timestamp AS timestamp, 
+            sd.SensorValue AS data,
+            st.Units AS units
+        FROM 
+            `amier-davis-hu.ISE.SensorData` AS sd
+        JOIN 
+            `amier-davis-hu.ISE.Workouts` AS w 
+            ON sd.WorkoutID = w.WorkoutId
+        JOIN 
+            `amier-davis-hu.ISE.SensorTypes` AS st 
+            ON sd.SensorId = st.SensorId
+        WHERE 
+            w.UserId = @user_id 
+            AND w.WorkoutId = @workout_id
+        ORDER BY 
+            sd.Timestamp ASC
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("user_id", "STRING", user_id),
+            bigquery.ScalarQueryParameter("workout_id", "STRING", workout_id),
+        ]
+    )
+    
+    query_job = client.query(query, job_config=job_config)
+    results = query_job.result()
+
+    if not results:
+        user_check_query = "SELECT 1 FROM `amier-davis-hu.ISE.Workouts` WHERE UserId = @user_id LIMIT 1"
+        user_check_config = bigquery.QueryJobConfig(
+            query_parameters=[bigquery.ScalarQueryParameter("user_id", "STRING", user_id)]
         )
+        user_exists = list(client.query(user_check_query, job_config=user_check_config).result())
+
+        if not user_exists:
+            raise ValueError(f"User {user_id} not found.")
+        else:
+            raise ValueError(f"Workout {workout_id} not found for user {user_id}.")
+
+    sensor_data = []
+    
+    for row in results:
+        sensor_data.append({
+            'sensor_type': row.sensor_type,
+            'timestamp': str(row.timestamp),
+            'data': row.data,
+            'units': row.units
+        })
+        
     return sensor_data
 
 
-def get_user_workouts(user_id):
-    """Returns a list of user's workouts.
-
-    This function currently returns random data. You will re-write it in Unit 3.
+def get_user_workouts(user_id, client=None):
     """
+    Fetches a list of workouts for a given user from BigQuery.
+
+    Args:
+        user_id (str): The  identifier of the user whose workouts are being retrieved.
+
+    Returns:
+        list[dict]: A list of dictionaries, where each dictionary represents a workout.
+        Each workout contains:
+            - workout_id (str)
+            - start_timestamp (str | None)
+            - end_timestamp (str | None)
+            - start_lat_lng (tuple[float, float] | None)
+            - end_lat_lng (tuple[float, float] | None)
+            - distance (float)
+            - steps (int)
+            - calories_burned (float)
+    """
+    if user_id is None:
+        raise ValueError("user_id cannot be None")
+
+    if client is None:
+        client = bigquery.Client()
+
+    query = """
+        SELECT
+            WorkoutId,
+            StartTimestamp,
+            EndTimestamp,
+            StartLocationLat,
+            StartLocationLong,
+            EndLocationLat,
+            EndLocationLong,
+            TotalDistance,
+            TotalSteps,
+            CaloriesBurned
+        FROM amier-davis-hu.ISE.Workouts
+        WHERE UserId = @user_id
+        ORDER BY StartTimestamp DESC
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("user_id", "STRING", user_id)
+        ]
+    )
+
+    query_job = client.query(query, job_config=job_config)
+    results = query_job.result()
+    if not results:
+        raise ValueError(f"User {user_id} not found.")
+
     workouts = []
-    for index in range(random.randint(1, 3)):
-        random_lat_lng_1 = (
-            1 + random.randint(0, 100) / 100,
-            4 + random.randint(0, 100) / 100,
-        )
-        random_lat_lng_2 = (
-            1 + random.randint(0, 100) / 100,
-            4 + random.randint(0, 100) / 100,
-        )
+    for row in results:
+        start_lat_lng = None
+        if row.StartLocationLat is not None or row.StartLocationLong is not None:
+            start_lat_lng = (row.StartLocationLat, row.StartLocationLong)
+
+        end_lat_lng = None
+        if row.EndLocationLat is not None and row.EndLocationLong is not None:
+            end_lat_lng = (row.EndLocationLat, row.EndLocationLong)
+
         workouts.append({
-            'workout_id': f'workout{index}',
-            'start_timestamp': '2024-01-01 00:00:00',
-            'end_timestamp': '2024-01-01 00:30:00',
-            'start_lat_lng': random_lat_lng_1,
-            'end_lat_lng': random_lat_lng_2,
-            'distance': random.randint(0, 200) / 10.0,
-            'steps': random.randint(0, 20000),
-            'calories_burned': random.randint(0, 100),
+            "workout_id": row.WorkoutId,
+            "start_timestamp": row.StartTimestamp.strftime("%Y-%m-%d %H:%M:%S") if row.StartTimestamp else None,
+            "end_timestamp": row.EndTimestamp.strftime("%Y-%m-%d %H:%M:%S") if row.EndTimestamp else None,
+            "start_lat_lng": start_lat_lng,
+            "end_lat_lng": end_lat_lng,
+            "distance": row.TotalDistance,
+            "steps": row.TotalSteps,
+            "calories_burned": row.CaloriesBurned,
         })
+
     return workouts
+    
 
-
-def get_user_profile(user_id):
-    """Returns information about the given user.
-
-    This function currently returns random data. You will re-write it in Unit 3.
+def get_user_profile(user_id, client=None):
     """
-    if user_id not in users:
-        raise ValueError(f'User {user_id} not found.')
-    return users[user_id]
+    Returns information about the given user from BigQuery.
 
+    Args:
+        user_id (str): The unique identifier for the user.
+        client (google.cloud.bigquery.Client, optional): An instantiated BigQuery client. 
+            If None, a new client will be initialized. Defaults to None.
 
-def get_user_posts(user_id):
-    """Returns a list of a user's posts.
+    Returns:
+        dict: A dictionary containing:
+            - 'full_name' (str): The user's full name.
+            - 'username' (str): The user's handle.
+            - 'date_of_birth' (str): The user's birth date.
+            - 'profile_image' (str): URL to the user's image.
+            - 'friends' (list[str]): A list of friend user_ids.
 
-    This function currently returns random data. You will re-write it in Unit 3.
+    Raises:
+        ValueError: If user_id is None or if the user is not found.
     """
-    content = random.choice([
-        'Had a great workout today!',
-        'The AI really motivated me to push myself further, I ran 10 miles!',
-    ])
-    return [{
-        'user_id': user_id,
-        'post_id': 'post1',
-        'timestamp': '2024-01-01 00:00:00',
-        'content': content,
-        'image': 'image_url',
-    }]
+    if user_id is None:
+        raise ValueError("user_id cannot be None")
+
+    if client is None:
+        client = bigquery.Client()
+    
+    query = """
+        SELECT 
+            Name AS full_name, 
+            Username AS username, 
+            CAST(DateOfBirth AS STRING) AS date_of_birth, 
+            ImageUrl AS profile_image,
+            ARRAY(
+                SELECT UserId2 FROM `amier-davis-hu.ISE.Friends` WHERE UserId1 = @user_id
+                UNION DISTINCT
+                SELECT UserId1 FROM `amier-davis-hu.ISE.Friends` WHERE UserId2 = @user_id
+            ) AS friends
+        FROM `amier-davis-hu.ISE.Users`
+        WHERE UserId = @user_id
+    """
+    
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("user_id", "STRING", user_id)
+        ]
+    )
+
+    query_job = client.query(query, job_config=job_config)
+    results = list(query_job.result())
+
+    if not results:
+        raise ValueError(f"User {user_id} not found.")
+
+    row = results[0]
+    return {
+        'full_name': row.full_name,
+        'username': row.username,
+        'date_of_birth': row.date_of_birth,
+        'profile_image': row.profile_image,
+        'friends': list(row.friends)
+    }
 
 
-def get_genai_advice(user_id):
+
+
+def get_user_posts(user_id, client=None):
+    """
+    Returns a list of a user's posts from BigQuery.
+
+    Args:
+        user_id (str): The unique identifier for the user.
+        client (google.cloud.bigquery.Client, optional): An instantiated BigQuery client. 
+            If None, a new client will be initialized. Defaults to None.
+
+    Returns:
+        list[dict]: A list of posts. Each dictionary contains:
+            - 'user_id' (str): The ID of the author.
+            - 'post_id' (str): The unique ID of the post.
+            - 'timestamp' (str): When the post was created.
+            - 'content' (str): The text content (may be None).
+            - 'image' (str): The image URL associated with the post.
+
+    Raises:
+        ValueError: If user_id is None.
+    """
+    if user_id is None:
+        raise ValueError("user_id cannot be None")
+
+    if client is None:
+        client = bigquery.Client()
+    
+    query = """
+        SELECT 
+            AuthorId AS user_id, 
+            PostId AS post_id, 
+            CAST(Timestamp AS STRING) AS timestamp, 
+            Content AS content, 
+            ImageUrl AS image
+        FROM `amier-davis-hu.ISE.Posts`
+        WHERE AuthorId = @user_id
+        ORDER BY Timestamp DESC
+    """
+    
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("user_id", "STRING", user_id)
+        ]
+    )
+
+    query_job = client.query(query, job_config=job_config)
+    results = query_job.result()
+
+    posts = []
+    for row in results:
+        posts.append({
+            'user_id': row.user_id,
+            'post_id': row.post_id,
+            'timestamp': row.timestamp,
+            'content': row.content,
+            'image': row.image
+        })
+    
+    return posts
+
+def get_genai_advice(user_id, model=None):
     """Returns the most recent advice from the genai model.
 
     This function currently returns random data. You will re-write it in Unit 3.
     """
-    advice = random.choice([
-        'Your heart rate indicates you can push yourself further. You got this!',
-        "You're doing great! Keep up the good work.",
-        'You worked hard yesterday, take it easy today.',
-        'You have burned 100 calories so far today!',
-    ])
-    image = random.choice([
-        'https://plus.unsplash.com/premium_photo-1669048780129-051d670fa2d1?q=80&w=3870&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-        None,
-    ])
+    content = None
+    username = get_username(user_id)
+
+    try:
+        if model is None:
+            import vertexai
+            from vertexai.generative_models import GenerativeModel
+
+            vertexai.init(project="lena-diouf-hu", location="us-central1")
+            model = GenerativeModel("gemini-2.5-flash")
+
+        prompt = f"""
+        You are a supportive fitness coach.
+        Give one short, motivating and practical fitness insight for user {username}.
+        Keep it under 50 words. Do not use markdown.
+        """
+
+        response = model.generate_content(prompt)
+        content = response.text.strip() if getattr(response, "text", None) else None
+
+    except Exception as e:
+        print(f"Vertex AI failed, using fallback: {e}")
+
+    if not content:
+        content = random.choice([
+            "Your heart rate indicates you can push yourself further. You got this!",
+            "You're doing great! Keep up the good work.",
+            "You worked hard yesterday, take it easy today.",
+            "You have burned 100 calories so far today!",
+        ])
+
+    image = None
+    if random.random() < 0.5:
+        image = "https://plus.unsplash.com/premium_photo-1669048780129-051d670fa2d1?q=80&w=3870&auto=format&fit=crop"
+
     return {
-        'advice_id': 'advice1',
-        'timestamp': '2024-01-01 00:00:00',
-        'content': advice,
-        'image': image,
+        "advice_id": f"advice_{user_id}_{int(datetime.now().timestamp())}",
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "content": content,
+        "image": image,
     }
+
+
+
+def get_username(user_id, client=None):
+    if client is None:
+        client = bigquery.Client()
+
+    query = f"""
+        SELECT Username
+        FROM amier-davis-hu.ISE.Users
+        WHERE UserId = @user_id
+        LIMIT 1
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("user_id", "STRING", user_id)
+        ]
+    )
+
+    results = client.query(query, job_config=job_config).result()
+
+    for row in results:
+        return row.Username
+
+    return "User"
+
