@@ -379,7 +379,7 @@ def get_genai_advice(user_id, model=None):
 
 def get_username(user_id, client=None):
     if client is None:
-        client = bigquery.Client(project="lena-diouf-hu")
+        client = bigquery.Client()
 
     query = f"""
         SELECT Username
