@@ -42,8 +42,8 @@ def display_app_page():
 # This is the starting point for your app. You do not need to change these lines
 if __name__ == '__main__':
     home = st.Page(display_app_page, title="Home", icon="🏠")
-    activity = st.Page(lambda: display_activity_page(userId, workouts), title="My Activity", icon="🏃")
-    community = st.Page(lambda: display_community_page(userId), title="Community", icon="👥")
+    activity = st.Page(lambda: display_activity_page(userId, workouts), title="My Activity", icon="🏃", url_path="activity")
+    community = st.Page(lambda: display_community_page(userId), title="Community", icon="👥", url_path="community")
 
     pg = st.navigation({
         "GALEA Digital's Workout App": [home, activity, community]
