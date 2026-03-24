@@ -97,14 +97,67 @@ def get_user_workouts(user_id):
     return workouts
 
 
-def get_user_profile(user_id):
-    """Returns information about the given user.
-
-    This function currently returns random data. You will re-write it in Unit 3.
+def get_user_profile(user_id, client=None):
     """
-    if user_id not in users:
-        raise ValueError(f'User {user_id} not found.')
-    return users[user_id]
+    Returns information about the given user from BigQuery.
+
+    Args:
+        user_id (str): The unique identifier for the user.
+        client (google.cloud.bigquery.Client, optional): An instantiated BigQuery client. 
+            If None, a new client will be initialized. Defaults to None.
+
+    Returns:
+        dict: A dictionary containing:
+            - 'full_name' (str): The user's full name.
+            - 'username' (str): The user's handle.
+            - 'date_of_birth' (str): The user's birth date.
+            - 'profile_image' (str): URL to the user's image.
+            - 'friends' (list[str]): A list of friend user_ids.
+
+    Raises:
+        ValueError: If user_id is None or if the user is not found.
+    """
+    if user_id is None:
+        raise ValueError("user_id cannot be None")
+
+    if client is None:
+        client = bigquery.Client()
+    
+    query = """
+        SELECT 
+            Name AS full_name, 
+            Username AS username, 
+            CAST(DateOfBirth AS STRING) AS date_of_birth, 
+            ImageUrl AS profile_image,
+            ARRAY(
+                SELECT UserId2 FROM `amier-davis-hu.ISE.Friends` WHERE UserId1 = @user_id
+                UNION DISTINCT
+                SELECT UserId1 FROM `amier-davis-hu.ISE.Friends` WHERE UserId2 = @user_id
+            ) AS friends
+        FROM `amier-davis-hu.ISE.Users`
+        WHERE UserId = @user_id
+    """
+    
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("user_id", "STRING", user_id)
+        ]
+    )
+
+    query_job = client.query(query, job_config=job_config)
+    results = list(query_job.result())
+
+    if not results:
+        raise ValueError(f"User {user_id} not found.")
+
+    row = results[0]
+    return {
+        'full_name': row.full_name,
+        'username': row.username,
+        'date_of_birth': row.date_of_birth,
+        'profile_image': row.profile_image,
+        'friends': list(row.friends)
+    }
 
 
 

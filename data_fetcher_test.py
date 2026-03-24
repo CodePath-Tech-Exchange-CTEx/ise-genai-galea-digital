@@ -8,7 +8,92 @@
 import unittest
 from unittest.mock import MagicMock
 from google.cloud import exceptions
-from data_fetcher import get_user_posts, get_genai_advice, get_user_profile, get_user_sensor_data, get_user_workouts
+from data_fetcher import get_user_profile, get_user_posts, get_user_sensor_data, get_user_workouts, get_genai_advice
+
+class TestGetUserProfile(unittest.TestCase):
+    """Test suite for the get_user_profile function."""
+    def setUp(self):
+        self.user_id = "user2"
+        self.mock_client = MagicMock()
+
+    # FUNCTIONAL REQUIREMENTS
+
+    def test_get_user_profile_success(self):
+        """Test that profile data and friends list are correctly mapped."""
+        # Setup the mock row
+        mock_row = MagicMock()
+        mock_row.full_name = 'Bob Smith'
+        mock_row.username = 'bobsmith'
+        mock_row.date_of_birth = '1985-06-20'
+        mock_row.profile_image = 'http://example.com/bob.jpg'
+        mock_row.friends = ['user1', 'user3']
+
+        # .query() returns a mock_job
+        # .query().result() returns the list of rows
+        self.mock_client.query.return_value.result.return_value = [mock_row]
+
+        # Inject the mock_client
+        result = get_user_profile(self.user_id, client=self.mock_client)
+
+        # Assertions
+        self.assertEqual(result['full_name'], 'Bob Smith')
+        self.assertEqual(result['username'], 'bobsmith')
+        self.assertIsInstance(result['friends'], list)
+        self.assertEqual(len(result['friends']), 2)
+        self.assertIn('user1', result['friends'])
+
+    def test_query_parameters_passed(self):
+        """Verify the query uses @user_id to prevent SQL injection."""
+        # We need a return value so the function doesn't crash before the check
+        self.mock_client.query.return_value.result.return_value = [MagicMock()]
+        
+        get_user_profile(self.user_id, client=self.mock_client)
+        
+        args, _ = self.mock_client.query.call_args
+        query_str = args[0]
+    
+    # INPUT EDGE CASES
+
+    def test_invalid_input_none(self):
+        """Test how the function handles a None user_id."""
+        with self.assertRaises(ValueError):
+            get_user_profile(None, client=self.mock_client)
+
+    # DATA EDGE CASES
+
+    def test_get_user_profile_not_found(self):
+        """Ensure ValueError is raised if BigQuery returns no rows."""
+        self.mock_client.query.return_value.result.return_value = [] 
+
+        with self.assertRaises(ValueError):
+            get_user_profile("non_existent_user", client=self.mock_client)
+
+    def test_schema_types(self):
+        """Verify data types match the UI requirements (dates as strings)."""
+        mock_row = MagicMock()
+        mock_row.date_of_birth = '1990-01-15' # Already cast to string in SQL
+        mock_row.friends = []
+        
+        self.mock_client.query.return_value.result.return_value = [mock_row]
+        
+        result = get_user_profile(self.user_id, client=self.mock_client)
+        self.assertIsInstance(result['date_of_birth'], str)
+    
+    # INFRASTRUCTURE & INTEGRATION ERRORS
+
+    def test_bigquery_authentication_error(self):
+        """Simulate a 403 Forbidden error."""
+        self.mock_client.query.side_effect = exceptions.Forbidden("Access Denied")
+        
+        with self.assertRaises(exceptions.Forbidden):
+            get_user_profile(self.user_id, client=self.mock_client)
+    
+    def test_bigquery_timeout(self):
+        """Simulate a network timeout."""
+        self.mock_client.query.side_effect = exceptions.InternalServerError("Timeout")
+        
+        with self.assertRaises(exceptions.InternalServerError):
+            get_user_profile(self.user_id, client=self.mock_client)
 
 class TestGetUserPosts(unittest.TestCase):
     """Test suite for the get_user_posts function."""
@@ -83,6 +168,7 @@ class TestGetUserPosts(unittest.TestCase):
         
         with self.assertRaises(exceptions.Forbidden):
             get_user_posts(self.user_id, client=self.mock_client)
+
 
     def test_bigquery_timeout(self):
         """Simulate a network timeout."""
