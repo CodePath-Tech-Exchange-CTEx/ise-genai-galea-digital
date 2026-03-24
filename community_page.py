@@ -7,7 +7,6 @@ def display_community_page(user_id):
     st.title("Community Hub")
 
     # 1. Display GenAI Advice and Encouragement
-    # Fetching from your existing data_fetcher function
     genai_advice = get_genai_advice(user_id)
     if genai_advice:
         display_genai_advice(
@@ -20,11 +19,10 @@ def display_community_page(user_id):
     st.subheader("Recent Activity from Friends")
 
     # 2. Fetch First 10 Friend Posts directly
-    # We implement the BigQuery call here instead of a separate function
     client = bigquery.Client()
     
-    # We JOIN the Posts table with a Friends table to get only social circle content
-    # and use ORDER BY + LIMIT 10 to satisfy the assignment requirements.
+    # JOIN the Posts table with a Friends table to get only social circle content
+    # Use ORDER BY + LIMIT 10 to satisfy the assignment requirements.
     query = f"""
         SELECT 
             p.AuthorId as user_id,
@@ -48,7 +46,6 @@ def display_community_page(user_id):
             st.info("No posts from friends yet. Go set a PR and share it!")
         else:
             for post in post_list:
-                # Formatting timestamp if it comes back as a datetime object
                 ts = post['timestamp']
                 if hasattr(ts, 'strftime'):
                     ts = ts.strftime("%Y-%m-%d %H:%M:%S")

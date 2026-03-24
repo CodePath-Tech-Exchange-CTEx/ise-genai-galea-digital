@@ -11,14 +11,13 @@ from streamlit.testing.v1 import AppTest
 class TestDisplayCommunityPage(unittest.TestCase):
 
     def setUp(self):
-        # Mock data for GenAI advice
+        # Mock data
         self.mock_advice = {
             "timestamp": "2026-03-24 10:00:00",
             "content": "Keep pushing, you're doing great!",
             "image": None
         }
         
-        # Mock data for friend posts (Meeting the "10 posts" requirement)
         self.mock_posts = [
             {
                 "user_id": f"friend{i}",
