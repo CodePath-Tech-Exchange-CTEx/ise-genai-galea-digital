@@ -1,0 +1,61 @@
+FEATURES.TXT
+
+--------------------------------------------------
+FEATURE 1: User Workout Feedback 
+--------------------------------------------------
+
+Brief Description:
+Allow users to log feedback after workouts (effort, motivation, difficulty) with a clear and intuitive interface.
+
+Improvements from Usability Test:
+- Improve emoji selection clarity (selected vs unselected states)
+- Add “Select One” instruction to effort scale
+- Redesign motivation icons for consistency (remove confusing icons like fire emoji)
+- Fix interaction model so inputs are clearly tappable (not draggable)
+
+Tasks / Plan:
+
+Task 1: Build Feedback UI Components
+- Create UI for effort, motivation, and difficulty inputs (emoji buttons + scale)
+
+Task 2: Implement Feedback Selection Logic
+- Allow only one selection per category
+- Update app state when user selects an option
+
+Task 3: Connect Feedback to Data Storage
+- Save feedback (effort, motivation, difficulty) to database or session state
+
+Task 4: Write Tests for Feedback Feature
+- Test selection logic
+- Test that feedback is saved correctly
+
+
+--------------------------------------------------
+FEATURE 2: Calorie Burn Goal Tracker
+--------------------------------------------------
+
+Brief Description:
+Allow users to set, track, and edit daily or weekly calorie burn goals with visual progress feedback.
+
+Improvements from Usability Test:
+- Add visible edit button for modifying calorie goals
+- Implement goal update functionality
+- Add visual feedback (progress bar or percentage)
+- Validate user input to prevent invalid values
+
+Tasks / Plan:
+
+Task 1: Build Goal Input UI 
+- Create input field and button for setting calorie goal
+
+Task 2: Add Progress Visualization
+- Display progress toward calorie goal (progress bar or percentage)
+
+Task 3: Implement Edit Goal Feature
+- Add edit button and allow users to update their goal
+
+Task 4: Implement Goal Storage Logic
+- Store calorie goal in database or session state
+
+Task 5: Write Tests for Goal Tracker
+- Test goal creation, update, and validation logic
