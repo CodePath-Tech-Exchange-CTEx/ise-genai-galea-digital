@@ -90,12 +90,13 @@ def display_activity_summary(workouts_list):
     st.map(map_data)
 
 
-def display_recent_workouts(workouts_list):
+def display_recent_workouts(workouts_list, feedback_by_workout=None):
     """
     Displays a list of recent workouts in a structured Streamlit layout.
 
     Args:
         workouts_list (list[dict] or None): List of workout data dictionaries.
+        feedback_by_workout (dict or None): Mapping of workout_id to feedback data.
 
     Returns:
         None
@@ -107,10 +108,14 @@ def display_recent_workouts(workouts_list):
         st.info("No recent workouts yet.")
         return
     
+    if feedback_by_workout is None:
+        feedback_by_workout = {}
+    
     DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
     for i, w in enumerate(reversed(workouts_list)):
-        workout_number = i
+        workout_number = i + 1
+        workout_id = w.get("workout_id", f"workout_{i}")
 
         start_raw = w.get("start_timestamp", "")
         end_raw = w.get("end_timestamp", "")
@@ -119,15 +124,15 @@ def display_recent_workouts(workouts_list):
             start_dt = datetime.strptime(start_raw, DATE_FORMAT)
             end_dt = datetime.strptime(end_raw, DATE_FORMAT)
 
-            date_str = start_dt.strftime("%b %d, %Y")          
-            time_str = f"{start_dt.strftime('%I:%M %p')} – {end_dt.strftime('%I:%M %p')}"  
+            date_str = start_dt.strftime("%b %d, %Y")
+            time_str = f"{start_dt.strftime('%I:%M %p')} – {end_dt.strftime('%I:%M %p')}"
             duration_mins = int((end_dt - start_dt).total_seconds() / 60)
         except Exception:
             date_str = start_raw
             time_str = end_raw
             duration_mins = None
 
-        with st.expander(f"Workout {workout_number}", expanded=(workout_number == 0)):
+        with st.expander(f"Workout {workout_number}", expanded=(workout_number == 1)):
             st.markdown(f"### Workout {workout_number}")
 
             st.caption(date_str)
@@ -148,6 +153,14 @@ def display_recent_workouts(workouts_list):
                 st.write(f"**Start:** {start_coords[0]:.5f}, {start_coords[1]:.5f}")
             if end_coords:
                 st.write(f"**End:** {end_coords[0]:.5f}, {end_coords[1]:.5f}")
+            feedback = feedback_by_workout.get(workout_id)
+            if feedback:
+                st.markdown("---")
+                st.markdown("#### Feedback")
+                st.write(f"**Effort:** {feedback['effort']}")
+                st.write(f"**Motivation:** {feedback['motivation']}")
+                if feedback.get("notes"):
+                    st.write(f"**Notes:** {feedback['notes']}")
 
 
 def display_genai_advice(timestamp, content, image):
