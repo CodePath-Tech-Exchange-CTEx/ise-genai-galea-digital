@@ -2,6 +2,7 @@ import streamlit as st
 from datetime import datetime
 from google.cloud import bigquery
 from modules import display_recent_workouts, display_activity_summary
+from calorie_goal import display_calorie_goal
 import uuid
 
 def display_activity_page(user_id, workouts):
@@ -10,6 +11,8 @@ def display_activity_page(user_id, workouts):
     display_recent_workouts(workouts[-3:])
 
     display_activity_summary(workouts)
+
+    display_calorie_goal(workouts)
 
     if workouts:
         latest = workouts[-1]
