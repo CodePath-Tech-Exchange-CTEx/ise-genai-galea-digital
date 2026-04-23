@@ -35,7 +35,7 @@ def display_post(username, user_image, timestamp, content, post_image):
 
         # 3. Post Image
         if post_image:
-            st.image(post_image, use_container_width=True)
+            st.image(post_image, width='stretch')
 
         # 4. Timestamp
         st.markdown(
@@ -51,7 +51,7 @@ def display_activity_summary(workouts_list):
     Args:
         workouts_list: the list of the user's workouts 
     """
-    st.header("Activity Summary")
+    st.subheader("Activity Summary")
 
     if not workouts_list:
         st.text("No workout history found.")
@@ -87,6 +87,7 @@ def display_activity_summary(workouts_list):
         {"lat": start_coords[0], "lon": start_coords[1], "name": "Start"},
         {"lat": end_coords[0], "lon": end_coords[1], "name": "End"}
     ])
+    st.text("Workout Route:")
     st.map(map_data)
 
 
@@ -173,7 +174,7 @@ def display_genai_advice(timestamp, content, image):
             If empty, the function returns early without rendering.
         image (str): A URL to display alongside the advice. Can be None.
     """
-    st.header("GenAI Coach Insight")
+    st.subheader("GenAI Coach Insight")
 
     if not content:
         st.info("No insights to display right now. Check in again later.")
