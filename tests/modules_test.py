@@ -61,7 +61,7 @@ class TestDisplayActivitySummary(unittest.TestCase):
             from modules import display_activity_summary
             display_activity_summary([])
         at = AppTest.from_function(app).run()
-        self.assertEqual(at.header[0].value, "Activity Summary")
+        self.assertEqual(at.subheader[0].value, "Activity Summary")
         self.assertEqual(at.text[0].value, "No workout history found.")
 
     def test_metrics_rendering(self):
@@ -86,7 +86,7 @@ class TestDisplayGenAiAdvice(unittest.TestCase):
             from modules import display_genai_advice
             display_genai_advice("2026-02-19 10:00:00", "Great job!", None)
         at = AppTest.from_function(app).run()
-        self.assertEqual(at.header[0].value, "GenAI Coach Insight")
+        self.assertEqual(at.subheader[0].value, "GenAI Coach Insight")
         self.assertIn("Great job", at.info[0].value)
 
     def test_display_advice_empty_content(self):

@@ -48,7 +48,7 @@ class TestDisplayCommunityPage(unittest.TestCase):
         # Verify Titles
         self.assertEqual(at.title[0].value, "Community Hub")
         # Verify GenAI Encouragement (using header from display_genai_advice module)
-        self.assertEqual(at.header[0].value, "GenAI Coach Insight")
+        self.assertEqual(at.subheader[0].value, "GenAI Coach Insight")
         self.assertIn("Keep pushing", at.info[0].value)
 
     @patch("google.cloud.bigquery.Client")
