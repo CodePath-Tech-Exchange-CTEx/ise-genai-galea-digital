@@ -7,11 +7,12 @@
 
 import streamlit as st
 from modules import display_post, display_genai_advice, display_activity_summary, display_recent_workouts
-from data_fetcher import get_user_posts, get_genai_advice, get_user_profile, get_user_sensor_data, get_user_workouts
+from data_fetcher import get_user_posts, get_genai_advice, get_user_profile, get_user_sensor_data, get_user_workouts, get_username
 from activity_page import display_activity_page
 from community_page import display_community_page
 
 userId = 'user1'
+username = get_username(userId)
 
 # Fetch data
 genai_advice = get_genai_advice(userId)
@@ -22,7 +23,7 @@ def compact_divider():
     st.markdown('<hr style="margin: 0px; border: 0.5px solid #ddd;">', unsafe_allow_html=True)
 
 def display_app_page():
-    st.header(f"Welcome Back, {userId}!")
+    st.header(f"Welcome Back, {username}!")
     
     # Create two columns
     col_main, col_side = st.columns([2, 1], gap="medium")
@@ -39,7 +40,7 @@ def display_app_page():
         
         st.write("### Most Recent Post")
         display_post(
-            username=posts[0]['user_id'],
+            username=get_username(posts[0]['user_id']),
             user_image=None, 
             timestamp=posts[0]['timestamp'],
             content=posts[0]['content'],
